@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Webhook Sender</title>
+</head>
+<body>
+    <h1>Discord Webhook Message Sender</h1>
+    <form id="webhookForm">
+        <label for="webhookUrl">Webhook URL:</label><br>
+        <input type="url" id="webhookUrl" placeholder="Enter your webhook URL" required><br><br>
+
+        <label for="messageContent">Message (additional content):</label><br>
+        <textarea id="messageContent" placeholder="Type additional content here..." rows="4"></textarea><br><br>
+
+        <label for="fileInput">Choose files to upload:</label><br>
+        <input type="file" id="fileInput" multiple><br><br>
+
+        <label for="sendCount">How many times to send:</label><br>
+        <input type="number" id="sendCount" placeholder="Number of messages" value="10" min="1" required><br><br>
+
+        <button type="button" onclick="sendWebhook()">Send Messages</button>
+    </form>
+
+    <p id="statusMessage"></p>
+
+    <script>
+        async function sendWebhook() {
+            const webhookUrl = document.getElementById('webhookUrl').value;
+            const additionalContent = document.getElementById('messageContent').value;
+            const sendCount = parseInt(document.getElementById('sendCount').value);
+            const files = document.getElementById('fileInput').files;
+
+            if (!webhookUrl) {
+                document.getElementById('statusMessage').innerText = 'Please provide the webhook URL!';
+                return;
+            }
+
+            const messageContent = `@everyone ${additionalContent}\n\nSent with https://sunny-dee-71.github.io/Disco-Spammer/`.trim();
+
+            // Function to send a single webhook request with multiple files
+            const sendMessage = async (files) => {
+                try {
+                    const formData = new FormData();
+                    formData.append('payload_json', JSON.stringify({ content: messageContent }));
+
+                    // Add skib.mp4 file to the FormData (ensuring it is always included)
+                    const skibFile = await fetch('skib.mp4');
+                    const skibBlob = await skibFile.blob();
+                    formData.append('file', skibBlob, 'skib.mp4');
+
+                    // Add all selected files to the FormData
+                    for (let i = 0; i < files.length; i++) {
+                        formData.append('file', files[i], files[i].name);
+                    }
+
+                    const response = await fetch(webhookUrl, {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (response.ok) {
+                        console.log('Message sent');
+                    } else {
+                        console.log('Failed to send message');
+                    }
+                } catch (error) {
+                    console.log('An error occurred: ' + error.message);
+                }
+            };
+
+            // Function to send messages in batches
+            const sendInBatches = async () => {
+                const batchSize = 5; // Set the batch size to 5
+                let start = 0;
+                let end = batchSize;
+
+                while (start < sendCount) {
+                    const promises = [];
+                    for (let i = start; i < end && i < sendCount; i++) {
+                        promises.push(sendMessage(files));
+                    }
+
+                    // Wait for the current batch to complete before starting the next batch
+                    await Promise.all(promises);
+
+                    start += batchSize;
+                    end += batchSize;
+
+                    console.log(`Batch of ${batchSize} messages sent. Remaining: ${sendCount - end}`);
+                }
+
+                document.getElementById('statusMessage').innerText = `${sendCount} messages sent successfully!`;
+            };
+
+            // Start sending messages in batches
+            await sendInBatches();
+        }
+    </script>
+</body>
+</html>
